@@ -1,0 +1,127 @@
+/* ===== خلفية الصفحة ===== */
+body {
+    background-image: url("https://al-rafiah.com/wp-content/uploads/2022/02/hero-bg.jpg");
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    margin: 0;
+    padding: 0;
+}
+
+/* ===== إخفاء عناصر Streamlit ===== */
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+header {visibility: hidden;}
+
+/* ===== شريط التنقل العلوي ===== */
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: white;
+    padding: 25px 60px;
+    font-family: 'Segoe UI', sans-serif;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    z-index: 1000;
+    box-shadow: none !important;
+}
+
+/* ===== الشعار ===== */
+.logo {
+    height: 60px;
+    width: auto;
+}
+
+/* ===== روابط شريط التنقل ===== */
+.navbar a {
+    text-decoration: none;
+    color: #333;
+    margin-left: 20px;
+    font-weight: 500;
+    font-size: 18px;
+    transition: color 0.3s ease;
+}
+
+.navbar a:hover {
+    color: #134734;
+}
+
+/* ===== تعويض مساحة الهيدر الثابت ===== */
+.stApp {
+    padding-top: 80px !important;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ===== إزالة خلفيات العناوين والبلوكات ===== */
+header, .block-container:before {
+    background: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+main .block-container {
+    padding-top: 200px !important;
+}
+
+/* ===== العنوان الرئيسي ===== */
+h1 {
+    color: #134734 !important;
+    font-family: 'Segoe UI', sans-serif;
+    font-weight: bold;
+    text-align: center;
+    font-size: 3em;
+}
+
+/* ===== الوصف ===== */
+h4 {
+    color: #888 !important;
+    font-family: 'Segoe UI', sans-serif;
+    text-align: center;
+    margin-top: -10px;
+}
+
+/* ===== أزرار خاصة بالتحليل ===== */
+button[aria-label="🔬 Pathology"],
+button[aria-label="🧫 Histology"] {
+    background-color: white !important;
+    color: #333 !important;
+    border: 2px solid #ccc !important;
+    border-radius: 8px !important;
+    font-weight: 500;
+}
+
+/* ===== الزر المختار فقط – حواف خضراء ===== */
+#model-pathology ~ button[aria-label="🔬 Pathology"],
+#model-histology ~ button[aria-label="🧫 Histology"] {
+    border: 2px solid #134734 !important;
+}
+
+/* ===== إزالة الحواف الزرقاء المؤقتة من المتصفح ===== */
+button:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+/* ===== تعليمات ===== */
+.css-1cpxqw2 {
+    background-color: #f0f0f0 !important;
+    border-radius: 6px;
+    padding: 12px;
+}
+
+/* ===== فوتر في الأسفل ===== */
+footer, .footer {
+    text-align: center;
+    color: gray;
+    padding: 10px;
+    font-size: 14px;
+    margin-top: auto;
+}
