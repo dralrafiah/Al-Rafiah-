@@ -1,6 +1,7 @@
 import tensorflow as tf
 from tensorflow import keras
 import numpy as np
+from huggingface_hub import hf_hub_download
 
 # Custom L2 Normalization Layer (needed for your models)
 class L2Normalization(keras.layers.Layer):
@@ -62,30 +63,39 @@ _benign_model = None
 _malignant_model = None
 
 def load_models():
-    """Load models once and store them globally"""
     global _binary_model, _benign_model, _malignant_model
     
-    if _binary_model is None:  # Only load if not already loaded
+    if _binary_model is None:
         try:
-            print("Loading breast cancer models...")
+            print("Loading breast cancer models from Hugging Face...")
             
-            # Create model architectures
+            # Create models
             _binary_model = create_binary_model()
-            _benign_model = create_subtype_model(4)  # 4 benign classes
-            _malignant_model = create_subtype_model(4)  # 4 malignant classes
-            
-            # Load weights only (this avoids the batch_shape error)
-            _binary_model.load_weights("modules/breast_model/breast_binary_model.h5")
-            _benign_model.load_weights("modules/breast_model/breast_benign_model.h5")
-            _malignant_model.load_weights("modules/breast_model/breast_malignant_model.h5")
-            
+            _benign_model = create_subtype_model(4)
+            _malignant_model = create_subtype_model(4)
+
+            # Download weights from Hugging Face
+            from huggingface_hub import hf_hub_download
+            token = os.environ["HF_TOKEN"]
+            repo_id = "JawaherAlsharif/breast-cancer-model"
+
+            binary_path = hf_hub_download(repo_id=repo_id, filename="breast_binary_model.h5", token=token)
+            benign_path = hf_hub_download(repo_id=repo_id, filename="breast_benign_model.h5", token=token)
+            malignant_path = hf_hub_download(repo_id=repo_id, filename="breast_malignant_model.h5", token=token)
+
+            # Load weights
+            _binary_model.load_weights(binary_path)
+            _benign_model.load_weights(benign_path)
+            _malignant_model.load_weights(malignant_path)
+
             print("✅ Breast cancer models loaded successfully!")
-            
+        
         except Exception as e:
             print(f"❌ Error loading models: {e}")
             _binary_model = _benign_model = _malignant_model = None
-    
+
     return _binary_model, _benign_model, _malignant_model
+
 
 # --- Subtype labels ---
 benign_subtypes = ['Adenosis', 'Fibroadenoma', 'Phyllodes Tumor', 'Tubular Adenoma']
