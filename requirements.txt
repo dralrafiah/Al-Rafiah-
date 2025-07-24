@@ -1,5 +1,5 @@
 # Core AI/ML Libraries
-tensorflow==2.14.0
+tensorflow==2.15.0
 torch==2.7.1
 torchvision==0.22.1
 transformers==4.53.2
