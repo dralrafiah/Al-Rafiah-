@@ -5,8 +5,8 @@ import os
 import numpy as np
 from reports.generate_breast_report import generate_breast_report
 from reports.generate_lungColon_report import generate_vit_report
-from modules.lung_model.vit_cancer_detector import predict_vit as predict_vit_model
-from modules.breast_model.breast_predictor import predict_breast_model as predict_breast
+from lung_model.vit_cancer_detector import predict_vit as predict_vit_model
+from breast_model.breast_predictor import predict_breast_model as predict_breast
 
 # Page setup (MUST BE FIRST)
 st.set_page_config(page_title="Al-Rafiah Medical Platform", page_icon="🧠", layout="centered")
