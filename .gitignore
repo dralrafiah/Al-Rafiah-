@@ -1,0 +1,52 @@
+# Ignore Python cache
+__pycache__/
+*.py[cod]
+
+# Ignore Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Ignore environment folders
+venv/
+venv_Alrafiah/
+
+# Ignore VSCode settings
+.vscode/
+*.code-workspace
+
+# Ignore model folders with large files
+modules/lung_model/local_model_safetensors/
+modules/breast_model/local_model_weights/
+modules/*/__pycache__/
+
+# Ignore PDF reports if generated
+reports/*.pdf
+
+# Ignore system files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Ignore compiled files
+*.so
+*.dll
+*.dylib
+
+# Ignore logs and temporary files
+*.log
+*.tmp
+*.bak
+
+# Optional: Ignore .env and sensitive configs
+.env
+*.env
+
+# Ignore large model weights (by file type if needed)
+*.h5
+*.keras
+*.ckpt
+*.tflite
+*.safetensors
+
+# Ignore datasets or assets (if needed)
+assets/datasets/
+assets/images_raw/
