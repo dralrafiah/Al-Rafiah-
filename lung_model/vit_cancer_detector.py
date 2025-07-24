@@ -21,15 +21,15 @@ TISSUE_CLASSES = {
 def load_model(device):
     print("Loading ViT model from Hugging Face ...")
 
-    # إذا كنت على Streamlit Cloud، حط التوكن في Secrets
     login(token=os.environ["HF_TOKEN"])
 
-    processor = ViTImageProcessor.from_pretrained("JawaherAlsharif/lung-colon-vit-model", use_auth_token=True)
-    model = ViTForImageClassification.from_pretrained("JawaherAlsharif/lung-colon-vit-model", use_auth_token=True)
+    processor = ViTImageProcessor.from_pretrained("JawaherAlsharif/lung-colon-vit-model")
+    model = ViTForImageClassification.from_pretrained("JawaherAlsharif/lung-colon-vit-model")
 
     model = model.to(device)
     model.eval()
     return model, processor
+
 
 def process_image(image_path, processor=None):
     image = Image.open(image_path).convert('RGB')
