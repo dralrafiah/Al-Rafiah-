@@ -23,8 +23,8 @@ def load_model(device):
 
     login(token=os.environ["HF_TOKEN"])
 
-    processor = ViTImageProcessor.from_pretrained("JawaherAlsharif/lung-colon-vit-model")
-    model = ViTForImageClassification.from_pretrained("JawaherAlsharif/lung-colon-vit-model")
+    processor = ViTImageProcessor.from_pretrained("draziza/lung-colon-vit-model")
+    model = ViTForImageClassification.from_pretrained("draziza/lung-colon-vit-model")
 
     model = model.to(device)
     model.eval()
