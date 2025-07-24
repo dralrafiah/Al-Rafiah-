@@ -1,8 +1,8 @@
 import tensorflow as tf
 from tensorflow import keras
 import numpy as np
-import os
 from huggingface_hub import hf_hub_download
+import os
 
 # Custom L2 Normalization Layer (needed for your models)
 class L2Normalization(keras.layers.Layer):
@@ -65,32 +65,27 @@ _malignant_model = None
 
 def load_models():
     global _binary_model, _benign_model, _malignant_model
-    
+
     if _binary_model is None:
         try:
             print("Loading breast cancer models from Hugging Face...")
-            
-            # Create models
+
+            token = os.getenv("HF_TOKEN")
+            if not token:
+                raise RuntimeError("❌ Missing HF_TOKEN environment variable.")
+
+            repo_id = "JawaherAlsharif/breast-cancer-model"
+
             _binary_model = create_binary_model()
             _benign_model = create_subtype_model(4)
             _malignant_model = create_subtype_model(4)
 
-            # Download weights from Hugging Face
-            from huggingface_hub import hf_hub_download
-            token = os.environ["HF_TOKEN"]
-            repo_id = "JawaherAlsharif/breast-cancer-model"
-
-            binary_path = hf_hub_download(repo_id=repo_id, filename="breast_binary_model.h5", token=token)
-            benign_path = hf_hub_download(repo_id=repo_id, filename="breast_benign_model.h5", token=token)
-            malignant_path = hf_hub_download(repo_id=repo_id, filename="breast_malignant_model.h5", token=token)
-
-            # Load weights
-            _binary_model.load_weights(binary_path)
-            _benign_model.load_weights(benign_path)
-            _malignant_model.load_weights(malignant_path)
+            _binary_model.load_weights(hf_hub_download(repo_id, "breast_binary_model.h5", token=token))
+            _benign_model.load_weights(hf_hub_download(repo_id, "breast_benign_model.h5", token=token))
+            _malignant_model.load_weights(hf_hub_download(repo_id, "breast_malignant_model.h5", token=token))
 
             print("✅ Breast cancer models loaded successfully!")
-        
+
         except Exception as e:
             print(f"❌ Error loading models: {e}")
             _binary_model = _benign_model = _malignant_model = None
