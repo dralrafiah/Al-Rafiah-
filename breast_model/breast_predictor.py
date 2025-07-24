@@ -74,7 +74,7 @@ def load_models():
             if not token:
                 raise RuntimeError("❌ Missing HF_TOKEN environment variable.")
 
-            repo_id = "JawaherAlsharif/breast-cancer-model"
+            repo_id = "JawaherAlsharif/breast-cancer-models"
 
             _binary_model = create_binary_model()
             _benign_model = create_subtype_model(4)
