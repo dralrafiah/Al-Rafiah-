@@ -1,5 +1,8 @@
 import streamlit as st
+
 from PIL import Image
+Image.MAX_IMAGE_PIXELS = None
+
 import base64
 import os
 import numpy as np
