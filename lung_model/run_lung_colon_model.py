@@ -307,7 +307,7 @@ def load_models_from_hf(device, repo_id="draziza/lung-colon-model"):
         colon_ckpt_path = hf_hub_download(repo_id=repo_id, filename="colon.pth")
         print(f"[load_models_from_hf] Downloaded colon.pth -> {colon_ckpt_path}")
     except Exception as ex:
-        raise RuntimeError(f"Failed to download colon.pth" from {repo_id}: {ex}")
+        raise RuntimeError(f"Failed to download colon.pth from {repo_id}: {ex}")
 
     # Instantiate models and load checkpoints
     lung_model = TransMIL().to(device)
