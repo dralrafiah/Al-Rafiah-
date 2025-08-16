@@ -90,7 +90,6 @@ def generate_lung_colon_report(
     pdf.set_text_color(0, 0, 0)
     pdf.cell(0, 7, f"Case ID: {case_id}", ln=True)
     pdf.cell(0, 7, f"Analysis Date & Time: {analysis_datetime}", ln=True)
-    pdf.cell(0, 7, f"Image File: {os.path.basename(original_image_path) if original_image_path else 'N/A'}", ln=True)
     pdf.cell(0, 7, f"Organ System: {organ}", ln=True)
     pdf.ln(8)
 
