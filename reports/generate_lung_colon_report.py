@@ -100,7 +100,7 @@ def generate_lung_colon_report(
     pdf.ln(4)
     pdf.set_font("Arial", "", 11)
     pdf.cell(0, 7, f"Diagnosis (model): {diagnosis}", ln=True)
-    pdf.cell(0, 7, f"Model Confidence: {confidence:.2f}%", ln=True)
+    pdf.cell(0, 7, f"Propability of cancer presence: {confidence:.2f}%", ln=True)
     pdf.cell(0, 7, f"Analysis Type: {analysis_type}", ln=True)
     pdf.ln(8)
 
@@ -117,31 +117,7 @@ def generate_lung_colon_report(
     except Exception:
         pdf.ln(2)
 
-    # 3. Model output (raw info)
-    pdf.set_font("Arial", "B", 13)
-    pdf.cell(0, 8, "3. MODEL OUTPUT", ln=True)
-    pdf.ln(4)
-    pdf.set_font("Arial", "", 11)
-    pdf.cell(0, 7, f"Reported Diagnosis: {diagnosis}", ln=True)
-    pdf.cell(0, 7, f"Confidence (percent): {confidence:.2f}%", ln=True)
-    pdf.ln(6)
-
-    # Confidence interpretation (simple)
-    def _confidence_text(conf):
-        if conf >= 95:
-            return "Very High confidence in model output."
-        if conf >= 85:
-            return "High confidence in model output."
-        if conf >= 70:
-            return "Moderate confidence; clinical correlation recommended."
-        if conf >= 30:
-            return "Low confidence; use results as supportive and request expert review."
-        return "Very low confidence; do not use without expert histopathological review."
-
-    pdf.multi_cell(0, 6, f"Interpretation: {_confidence_text(confidence)}")
-    pdf.ln(8)
-
-    # 4. Clinical notes / recommendation
+    # 3. Clinical notes / recommendation
     pdf.set_font("Arial", "B", 13)
     pdf.cell(0, 8, "4. CLINICAL NOTES", ln=True)
     pdf.ln(4)
