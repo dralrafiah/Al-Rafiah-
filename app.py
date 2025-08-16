@@ -3,10 +3,11 @@ from PIL import Image
 import base64
 import os
 import numpy as np
+import torch
 from reports.generate_breast_report import generate_breast_report
-from reports.generate_lungColon_report import generate_vit_report
-from lung_model.vit_cancer_detector import predict_vit as predict_vit_model
+from reports.generate_lung_colon_report import generate_lung_colon_report
 from breast_model.breast_predictor import predict_breast_model as predict_breast
+from lung_model.run_lung_colon_model import load_models_from_hf, analyze_wsi
 
 # Page setup (MUST BE FIRST)
 st.set_page_config(page_title="Al-Rafiah Medical Platform", page_icon="🧠", layout="centered")
@@ -55,23 +56,26 @@ st.markdown("---")
 with st.expander("📌 Instructions"):
     st.write("""
     Before using the AI service, please make sure to:
-    1. Select the organ type (Lung/Colon or Breast)
+    1. Select the organ type (Lung, Colon, Breast)
     2. Select the analysis type (CT or Histology)
-    3. Upload a medical image in JPG format only
+    3. Upload a medical image in JPG format. You can also upload SVS whole slide images for lung or colon cancer analysis.
     """)
 
-# Organ selection
+# Organ selection using three separate buttons
 st.markdown("### 🧬 Select the organ to analyze:")
-col1, col2 = st.columns(2)
-if col1.button("Lung and Colon"):
-    st.session_state["model_choice"] = "Lung and Colon"
-if col2.button("Breast"):
+col1, col2, col3 = st.columns(3)
+
+if col1.button("Lung"):
+    st.session_state["model_choice"] = "Lung"
+if col2.button("Colon"):
+    st.session_state["model_choice"] = "Colon"
+if col3.button("Breast"):
     st.session_state["model_choice"] = "Breast"
 
 selected = st.session_state.get("model_choice")
 if selected:
     st.markdown(f'<div id="model-{selected}" style="display:none;"></div>', unsafe_allow_html=True)
-    st.info(f"Selected: {selected.capitalize()} model")
+    st.info(f"Selected: {selected} model")
 
 # Analysis type selection
 if "model_choice" in st.session_state:
@@ -79,19 +83,40 @@ if "model_choice" in st.session_state:
     analysis_type = st.radio("Choose one:", ["CT", "Histology"], horizontal=True)
     st.session_state["analysis_type"] = analysis_type
 
+# Load lung/colon models once and cache them
+@st.cache_resource
+def get_lung_colon_models():
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    return load_models_from_hf(device, repo_id="draziza/lung-colon-model")
+
+lung_colon_models = None
+try:
+    lung_colon_models = get_lung_colon_models()
+except Exception as e:
+    st.warning(f"Could not preload Lung/Colon models now: {e}")
+
+
 # Image upload and analysis
-uploaded_image = st.file_uploader("Upload Image", type=["jpg", "jpeg", "png"])
+uploaded_image = st.file_uploader("Upload Image", type=["jpg", "jpeg", "png", "svs"])
 if uploaded_image:
     if not selected or "analysis_type" not in st.session_state:
         st.warning("⚠️ Please select both the organ and the type of analysis before proceeding.")
     else:
-        st.image(uploaded_image, caption="Uploaded Image")
-
+        # Show preview for non-WSI files
+        try:
+            if not uploaded_image.name.lower().endswith(".svs"):
+                st.image(uploaded_image, caption="Uploaded Image")
+        except Exception:
+            pass
+        
         model_choice = st.session_state.get("model_choice")
         analysis_type = st.session_state.get("analysis_type")
 
         if model_choice == "Breast" and analysis_type == "CT":
             st.error("⚠️ CT analysis is not available for breast cancer. Please select Histology analysis.")
+
+        if uploaded_image.name.lower().endswith(".svs") and model_choice == "Breast":
+            st.error("⚠️ Whole Slide Image (SVS) analysis is not available for breast cancer. Please upload a JPG/PNG image for breast cancer analysis.")
 
         elif st.button("🔍 Analyze"):
             try:
@@ -145,54 +170,78 @@ if uploaded_image:
                         except Exception as pdf_error:
                             st.warning(f"Report generation failed: {pdf_error}")
 
+                # LUNG and COLON branches: histology-only logic
                 else:
-                    try:
-                        result = predict_vit_model(image, tissue_type="colon")
-                    except Exception as lung_error:
-                        st.error(f"Lung/Colon model error: {lung_error}")
-                        result = None
+                    # If user selected CT in UI for Lung/Colon, inform that CT is not available yet.
+                    if analysis_type == "CT":
+                        st.error("CT analysis not implemented yet.")
 
-                    if result and result["predicted_class"] != "Error":
-                        predicted_class = result["predicted_class"]
-                        confidence = result["confidence"]
-                        
-                        # Display using SAME FORMAT as breast model, but with ViT's actual data
-                        st.success(f"✔ **Primary Classification**: {predicted_class}")
-                        st.info(f"🔬 **Model Prediction**: {predicted_class}")
-                        st.metric("🎯 Confidence Score", f"{confidence:.1f}%")
-                        
-                        # Add confidence interpretation (same logic as breast)
-                        if confidence >= 95:
-                            st.success("🟢 **Very High Confidence**")
-                        elif confidence >= 85:
-                            st.info("🔵 **High Confidence**")
-                        elif confidence >= 70:
-                            st.warning("🟡 **Moderate Confidence**")
-                        else:
-                            st.error("🔴 **Low Confidence**")
-
-                        try:
-                            # Generate PDF report using VIT report generator
-                            pdf_path = generate_vit_report(
-                                analysis_type=analysis_type,
-                                result=predicted_class,  # Raw ViT output like "colon_aca"
-                                confidence=confidence,
-                                image_name=uploaded_image.name,
-                                output_path="reports/Alrafiah_AI_Report_LungColon.pdf"
-                            )
-
-                            with open(pdf_path, "rb") as file:
-                                st.download_button(
-                                    "📄 Download Lung/Colon Report", 
-                                    file.read(), 
-                                    file_name="Alrafiah_AI_Report_LungColon.pdf", 
-                                    mime="application/pdf"
-                                )
-                        except Exception as pdf_error:
-                            st.warning(f"Report generation failed: {pdf_error}")
                     else:
-                        error_msg = result.get("error", "Unknown error") if result else "Model failed to load"
-                        st.error("Analysis failed. Reason: " + error_msg)
+                        st.info(f"Running {model_choice} Histology Model...")
+
+                        # Save uploaded file to temp for openslide/analyze_wsi
+                        temp_dir = "temp"
+                        os.makedirs(temp_dir, exist_ok=True)
+                        temp_path = os.path.join(temp_dir, uploaded_image.name)
+                        with open(temp_path, "wb") as f:
+                            f.write(uploaded_image.getbuffer())
+
+                        # Ensure models are available
+                        if lung_colon_models is None:
+                            try:
+                                lung_colon_models = get_lung_colon_models()
+                            except Exception as load_err:
+                                st.error(f"Failed to load Lung/Colon models: {load_err}")
+                                lung_colon_models = None
+
+                        else:
+                            model = lung_colon_models["lung"] if model_choice == "Lung" else lung_colon_models["colon"]
+
+                            try:
+                                highlighted_img, diagnosis, confidence = analyze_wsi(
+                                    temp_path, model, device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                                )
+
+                                st.image(highlighted_img, caption=f"{diagnosis} ({confidence:.2f}%)")
+                                st.success(f"✔ **Primary Classification**: {diagnosis}")
+                                st.metric("🎯 Cancer Presence Confidence", f"{confidence:.2f}%")
+
+                                if confidence >= 95:
+                                    st.success("🟢 **Very High Confidence**")
+                                elif confidence >= 85:
+                                    st.info("🔵 **High Confidence**")
+                                elif confidence >= 70:
+                                    st.warning("🟡 **Moderate Confidence**")
+                                else:
+                                    st.error("🔴 **Low Confidence**")
+
+                                # PDF generation for lung/colon uses existing generator
+                                try:
+                                    pdf_path = generate_lung_colon_report(
+                                        organ="Lung" if model_choice == "lung" else "Colon",
+                                        analysis_type=analysis_type,
+                                        diagnosis=diagnosis,
+                                        confidence=confidence,
+                                        highlighted_image=highlighted_img,
+                                        output_path=f"reports/Alrafiah_AI_{model_choice}_Report.pdf"
+                                    )
+                                    
+                                    if os.path.exists(pdf_path):
+                                        with open(pdf_path, "rb") as file:
+                                            st.download_button(
+                                                "📄 Download Lung/Colon Report",
+                                                file.read(),
+                                                file_name=f"Alrafiah_AI_{model_choice}_Report.pdf",
+                                                mime="application/pdf"
+                                            )
+                                    else:
+                                        st.warning("Lung/Colon report generation did not produce a PDF file.")
+                                except Exception as pdf_error:
+                                    st.warning(f"Report generation failed: {pdf_error}")
+
+
+                            except Exception as infer_err:
+                                st.error(f"Histology analysis failed: {infer_err}")
 
             except Exception as e:
                 st.error(f"An error occurred: {str(e)}")
