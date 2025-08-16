@@ -51,6 +51,7 @@ def generate_lung_colon_report(
         return tmp_name
 
     # Prepare image paths
+    inserted_images = []
     highlighted_path = None
     try:
         highlighted_path = _ensure_image_path(highlighted_image)
@@ -121,7 +122,6 @@ def generate_lung_colon_report(
     pdf.cell(0, 8, "3. MODEL OUTPUT", ln=True)
     pdf.ln(4)
     pdf.set_font("Arial", "", 11)
-    pdf.cell(0, 7, f"Model Raw Prediction: {model_label}", ln=True)
     pdf.cell(0, 7, f"Reported Diagnosis: {diagnosis}", ln=True)
     pdf.cell(0, 7, f"Confidence (percent): {confidence:.2f}%", ln=True)
     pdf.ln(6)
