@@ -7,35 +7,37 @@ from huggingface_hub import hf_hub_download
 
 def load_lungct_model(repo_id="draziza/lung-colon-model", filename="lungct.pth"):
     """
-    Load Lung CT model from HuggingFace repo.
-    Always rebuilds Faster R-CNN and loads the state_dict weights.
+    Final version:
+    Always rebuilds Faster R-CNN model and loads state_dict weights.
+    Never returns an OrderedDict.
     """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # Download model file
+    # Download model from HuggingFace
     model_path = hf_hub_download(repo_id=repo_id, filename=filename)
 
-    # Load weights (state_dict only)
+    # Load checkpoint
     checkpoint = torch.load(model_path, map_location=device)
 
-    # ✅ Always rebuild model
+    # Rebuild model every time
     model = models.detection.fasterrcnn_resnet50_fpn(pretrained=False)
 
-    # Handle case: checkpoint might be wrapped with {"model": state_dict}
-    if isinstance(checkpoint, dict) and "model" in checkpoint:
-        checkpoint = checkpoint["model"]
-
-    model.load_state_dict(checkpoint)
+    # Handle state_dict correctly
+    if isinstance(checkpoint, dict):
+        if "model" in checkpoint:
+            checkpoint = checkpoint["model"]  # unwrap nested dict
+        model.load_state_dict(checkpoint)
+    else:
+        raise RuntimeError("❌ Unexpected checkpoint format. Expected state_dict, got something else.")
 
     model.to(device)
-    model.eval()  # ✅ only called on the real model
-
+    model.eval()
     return model, device
 
 
 def predict_lungct(model, device, transform, image):
     """
-    Run inference on a CT scan image.
+    Run inference on CT image.
     """
     if transform is None:
         transform = transforms.Compose([
