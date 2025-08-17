@@ -4,6 +4,7 @@ import torchvision.transforms as transforms
 from PIL import Image
 from huggingface_hub import hf_hub_download
 
+
 def load_lungct_model(repo_id="draziza/lung-colon-model", filename="lungct.pth"):
     """
     Load Lung CT model from HuggingFace repo.
@@ -11,18 +12,24 @@ def load_lungct_model(repo_id="draziza/lung-colon-model", filename="lungct.pth")
     """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # Download model file from HF
+    # Download model file
     model_path = hf_hub_download(repo_id=repo_id, filename=filename)
 
-    # Load state_dict (weights)
+    # Load weights (state_dict only)
     checkpoint = torch.load(model_path, map_location=device)
 
-    # Rebuild model and load weights
+    # ✅ Always rebuild model
     model = models.detection.fasterrcnn_resnet50_fpn(pretrained=False)
+
+    # Handle case: checkpoint might be wrapped with {"model": state_dict}
+    if isinstance(checkpoint, dict) and "model" in checkpoint:
+        checkpoint = checkpoint["model"]
+
     model.load_state_dict(checkpoint)
 
     model.to(device)
-    model.eval()
+    model.eval()  # ✅ only called on the real model
+
     return model, device
 
 
