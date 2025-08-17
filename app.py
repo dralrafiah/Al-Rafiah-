@@ -11,7 +11,7 @@ from reports.generate_breast_report import generate_breast_report
 from reports.generate_lung_colon_report import generate_lung_colon_report
 from breast_model.breast_predictor import predict_breast_model as predict_breast
 from lung_model.run_lung_colon_model import load_models_from_hf, analyze_wsi
-from lungct_loader import load_lungct_model, predict_lungct  # 👈 NEW import
+from lungct_model.lungct_loader import load_lungct_model, predict_lungct  # ✅ FIXED IMPORT
 
 # Page setup (MUST BE FIRST)
 st.set_page_config(page_title="Al-Rafiah Medical Platform", page_icon="🧠", layout="centered")
