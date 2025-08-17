@@ -2,16 +2,13 @@ import torch
 import torchvision.models as models
 import torchvision.transforms as transforms
 from PIL import Image
-import requests
-import os
+from huggingface_hub import hf_hub_download
 
 def load_lungct_model(repo_id="draziza/lung-colon-model", filename="lungct.pth"):
     """
     Load Lung CT model from HuggingFace repo.
     Handles both full model objects and state_dict checkpoints.
     """
-    from huggingface_hub import hf_hub_download
-
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Download model file from HF
