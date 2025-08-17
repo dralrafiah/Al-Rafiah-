@@ -103,8 +103,8 @@ except Exception as e:
 @st.cache_resource
 def get_lungct_model():
     try:
-        model, device = load_lungct_model(model_path="lungct.pth")
-        return model, device
+        model, device = load_lungct_model(repo_id="draziza/lung-colon-model", filename="lungct.pth")
+        return model, device, None
     except Exception as e:
         return None, None, str(e)
 
