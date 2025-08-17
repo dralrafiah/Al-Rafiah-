@@ -7,6 +7,7 @@ import base64
 import os
 import numpy as np
 import torch
+from torchvision import transforms  # ✅ Added here
 from reports.generate_breast_report import generate_breast_report
 from reports.generate_lung_colon_report import generate_lung_colon_report
 from breast_model.breast_predictor import predict_breast_model as predict_breast
@@ -172,9 +173,10 @@ if uploaded_image:
                             st.error(f"Lung CT model unavailable: {lungct_error}")
                         else:
                             st.info("Running Lung CT model...")
-                            transform = torch.nn.Sequential(  # 👈 simple preprocessing
-                                torch.nn.Identity()
-                            )
+                            transform = transforms.Compose([   # ✅ FIXED
+                                transforms.Resize((512, 512)),
+                                transforms.ToTensor(),
+                            ])
                             outputs = predict_lungct(lungct_model, lungct_device, transform, image)
                             keep = outputs["scores"] >= 0.5
                             num = int(keep.sum().item())
