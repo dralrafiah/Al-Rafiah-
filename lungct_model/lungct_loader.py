@@ -1,44 +1,45 @@
+# lungct_model/lungct_loader.py
+import os
 import torch
-import torchvision
-from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
-from torchvision import transforms
+import torchvision.models as models
+import torchvision.transforms as transforms
+from PIL import Image
+from huggingface_hub import hf_hub_download
 
-def load_lungct_model(checkpoint_path="lungct.pth"):
+def load_lungct_model(repo_id="draziza/lung-colon-model", filename="lungct.pth", num_classes=2):
     """
-    Load FasterRCNN model trained on lung CT nodules.
-    Handles state_dict checkpoints.
+    Loads Faster R-CNN from a HF checkpoint (state_dict) or full model.
+    If the HF repo is private, set env var HF_TOKEN in your deployment.
     """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    token = os.getenv("HF_TOKEN")  # leave empty if public
 
-    # Build base model (no pretrained weights, just structure)
-    model = torchvision.models.detection.fasterrcnn_resnet50_fpn(weights=None)
+    # download file from HF
+    ckpt_path = hf_hub_download(repo_id=repo_id, filename=filename, token=token)
+    checkpoint = torch.load(ckpt_path, map_location=device)
 
-    # Replace the head with correct number of classes
-    in_features = model.roi_heads.box_predictor.cls_score.in_features
-    num_classes = 2  # background + nodule
-    model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
-
-    # Load your checkpoint
-    checkpoint = torch.load(checkpoint_path, map_location=device)
-    model.load_state_dict(checkpoint)
+    # Case A: a state_dict (common)
+    if isinstance(checkpoint, (dict, torch.collections.OrderedDict)):
+        model = models.detection.fasterrcnn_resnet50_fpn(
+            weights=None, weights_backbone=None, num_classes=num_classes
+        )
+        # load weights (ignore missing/unexpected to be robust)
+        model.load_state_dict(checkpoint, strict=False)
+    else:
+        # Case B: a full torch model object
+        model = checkpoint
 
     model.to(device)
     model.eval()
     return model, device
 
-
-def predict_lungct(model, device, image):
-    """
-    Run inference on a CT scan image.
-    """
-    transform = transforms.Compose([
-        transforms.Resize((512, 512)),
-        transforms.ToTensor(),
-    ])
-
+def predict_lungct(model, device, transform, image):
+    if transform is None:
+        transform = transforms.Compose([
+            transforms.Resize((512, 512)),
+            transforms.ToTensor(),
+        ])
     img_tensor = transform(image).unsqueeze(0).to(device)
-
     with torch.no_grad():
         outputs = model(img_tensor)
-
-    return outputs
+    return outputs[0]
