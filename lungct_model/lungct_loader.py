@@ -1,32 +1,23 @@
-# lungct_loader.py
+# lungct_model/lungct_loader.py
+
 import torch
+from huggingface_hub import hf_hub_download
 
-def load_lungct_model(device=None, model_path="lungct.pth"):
+def load_lungct_model(repo_id="draziza/lung-colon-model", filename="lungct.pth"):
     """
-    Load the lung CT detection model.
+    Downloads and loads the Lung CT model from Hugging Face Hub.
     """
-    if device is None:
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    print(f"Loading Lung CT model from {model_path} on {device} ...")
-
-    # Load model
+    model_path = hf_hub_download(repo_id=repo_id, filename=filename)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = torch.load(model_path, map_location=device)
-    model.to(device)
     model.eval()
-
     return model, device
-
 
 def predict_lungct(model, device, transform, image):
     """
-    Run inference on a single image.
-    - image: PIL image
-    - transform: preprocessing transform
+    Runs inference on a given PIL image using the Lung CT model.
     """
-    tensor = transform(image).unsqueeze(0).to(device)
-
+    img_tensor = transform(image).unsqueeze(0).to(device)
     with torch.no_grad():
-        outputs = model(tensor)[0]  # detection models usually return a dict
-
+        outputs = model(img_tensor)[0]
     return outputs
