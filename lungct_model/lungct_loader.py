@@ -4,6 +4,7 @@ import torchvision.transforms as transforms
 from PIL import Image
 from huggingface_hub import hf_hub_download
 
+
 def load_lungct_model(repo_id="draziza/lung-colon-model", filename="lungct.pth"):
     """
     Load Lung CT model from HuggingFace repo.
@@ -11,17 +12,17 @@ def load_lungct_model(repo_id="draziza/lung-colon-model", filename="lungct.pth")
     """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # Download model file from HF
+    # Download model file from HuggingFace
     model_path = hf_hub_download(repo_id=repo_id, filename=filename)
 
-    # Try to load model
+    # Load checkpoint
     checkpoint = torch.load(model_path, map_location=device)
 
-    # Case 1: Full model was saved -> has eval()
+    # Case 1: Full model saved -> has eval()
     if hasattr(checkpoint, "eval"):
         model = checkpoint
     else:
-        # Case 2: Only state_dict was saved
+        # Case 2: state_dict only
         model = models.detection.fasterrcnn_resnet50_fpn(pretrained=False)
         model.load_state_dict(checkpoint)
 
