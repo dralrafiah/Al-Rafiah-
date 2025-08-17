@@ -2,134 +2,242 @@
 
 from fpdf import FPDF
 from datetime import datetime
-import uuid
+import os
+from typing import List, Dict, Optional
 
+# ----------------------------
+# Public API
+# ----------------------------
 def generate_lungct_report(
-    detections: list,
+    detections: List[Dict],
     summary: str,
     purpose: str,
     observations: str,
     info_note: str,
     user: str = "Anonymous User",
-    output_path: str = "LungCT_Report.pdf"
+    scan_date: Optional[str] = None,
+    output_path: Optional[str] = None,
+    logo_path: str = "assets/alrafiah_logo.png",
+    case_id: Optional[str] = None,
 ) -> str:
     """
-    Generate a PDF report for Lung CT AI detection results.
+    Create a styled, branded PDF report for Lung CT detections.
 
     Args:
-        detections (list): List of dicts with nodule info:
-            [{ "nodule_id": int, "confidence": str, "location": str, "size": str, "priority": str }]
-        summary (str): Overall findings summary
-        purpose (str): Purpose statement
-        observations (str): Clinical-style notes
-        info_note (str): Extra info/disclaimer
-        user (str): Name of user/patient (default "Anonymous User")
-        output_path (str): Destination PDF filename
+        detections: list of dicts with keys:
+            - nodule_id (int)
+            - confidence (str, e.g. "92.15%")
+            - location (str)
+            - size (str, e.g. "30 × 24 pixels")
+            - priority (str, e.g. "High"/"Moderate")
+        summary: high-level summary paragraph
+        purpose: short paragraph describing tool's purpose
+        observations: additional notes/interpretation
+        info_note: info block (gray)
+        user: patient/user name for header
+        scan_date: date string (defaults to today if None)
+        output_path: where to save PDF (defaults to reports/LungCT_Report_YYYYMMDD_HHMMSS.pdf)
+        logo_path: path to logo (shown in header if exists)
+        case_id: optional external case id; if None a new one is generated
 
     Returns:
-        str: Path to generated PDF
+        str: absolute path to the generated PDF
     """
 
-    # Generate case metadata
-    case_id = f"LCCT_{datetime.now().strftime('%Y%m%d')}_{uuid.uuid4().hex[:8].upper()}"
-    analysis_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # --------- Prepare metadata ---------
+    ts = datetime.now()
+    scan_date = scan_date or ts.strftime("%Y-%m-%d")
+    if case_id is None:
+        case_id = f"LC_{ts.strftime('%Y%m%d')}_{ts.strftime('%H%M%S')}"
+    if output_path is None:
+        os.makedirs("reports", exist_ok=True)
+        output_path = os.path.join("reports", f"LungCT_Report_{ts.strftime('%Y%m%d_%H%M%S')}.pdf")
 
-    # Build PDF
-    pdf = FPDF()
+    # --------- Build PDF ---------
+    pdf = ThemedPDF(orientation="P", unit="mm", format="A4")
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
 
-    # Header
-    pdf.set_font("Arial", "B", 16)
-    pdf.set_text_color(19, 71, 52)
-    pdf.cell(0, 10, "Lung CT AI Detection Report", ln=True, align='C')
-    pdf.ln(8)
+    # Header with logo + title
+    pdf.header_with_brand(logo_path=logo_path, title="Al-Rafiah Medical AI Report")
 
-    # 1. Case Identification
-    pdf.set_font("Arial", "B", 13)
-    pdf.cell(0, 8, "1. CASE IDENTIFICATION", ln=True)
-    pdf.ln(3)
-    pdf.set_font("Arial", "", 11)
+    # --- 1) Case Information ---
+    pdf.section_title("1. CASE INFORMATION")
     pdf.set_text_color(0, 0, 0)
+    pdf.set_font("Arial", size=11)
+    pdf.ln(1)
     pdf.cell(0, 7, f"Case ID: {case_id}", ln=True)
-    pdf.cell(0, 7, f"Analysis Date & Time: {analysis_datetime}", ln=True)
-    pdf.cell(0, 7, f"Patient/User: {user}", ln=True)
-    pdf.cell(0, 7, "Organ System: Lung (CT scan)", ln=True)
-    pdf.ln(8)
-
-    # 2. AI Findings Summary
-    pdf.set_font("Arial", "B", 13)
-    pdf.cell(0, 8, "2. AI FINDINGS SUMMARY", ln=True)
+    pdf.cell(0, 7, f"Scan Date: {scan_date}", ln=True)
+    pdf.cell(0, 7, f"Subject: {user}", ln=True)
+    pdf.cell(0, 7, "Organ System: Lung (CT)", ln=True)
     pdf.ln(3)
-    pdf.set_font("Arial", "", 11)
-    pdf.multi_cell(0, 6, summary)
-    pdf.ln(6)
 
-    # 3. Detection Details
-    pdf.set_font("Arial", "B", 13)
-    pdf.cell(0, 8, "3. DETECTION DETAILS", ln=True)
-    pdf.ln(3)
-    pdf.set_font("Arial", "", 11)
-
+    # --- 2) AI Findings (table) ---
+    pdf.section_title("2. AI FINDINGS (CT DETECTIONS)")
     if detections and len(detections) > 0:
-        for d in detections:
-            pdf.multi_cell(
-                0, 6,
-                f"- Nodule {d['nodule_id']} | Confidence: {d['confidence']} | "
-                f"Location: {d['location']} | Size: {d['size']} | Priority: {d['priority']}"
-            )
-            pdf.ln(1)
+        _render_detections_table(pdf, detections)
     else:
-        pdf.cell(0, 7, "No nodules detected above the set threshold.", ln=True)
-    pdf.ln(8)
-
-    # 4. Purpose of Analysis
-    if purpose:
-        pdf.set_font("Arial", "B", 13)
-        pdf.cell(0, 8, "4. PURPOSE OF ANALYSIS", ln=True)
-        pdf.ln(3)
-        pdf.set_font("Arial", "", 11)
-        pdf.multi_cell(0, 6, purpose)
-        pdf.ln(6)
-
-    # 5. Observations
-    if observations:
-        pdf.set_font("Arial", "B", 13)
-        pdf.cell(0, 8, "5. OBSERVATIONS", ln=True)
-        pdf.ln(3)
-        pdf.set_font("Arial", "", 11)
-        pdf.multi_cell(0, 6, observations)
-        pdf.ln(6)
-
-    # 6. Important Notes
-    if info_note:
-        pdf.set_font("Arial", "B", 13)
-        pdf.cell(0, 8, "6. IMPORTANT NOTES", ln=True)
-        pdf.ln(3)
-        pdf.set_font("Arial", "", 11)
-        pdf.multi_cell(0, 6, info_note)
-        pdf.ln(6)
-
-    # Disclaimer
-    pdf.set_font("Arial", "B", 12)
-    pdf.set_text_color(150, 0, 0)
-    pdf.cell(0, 8, "DISCLAIMER", ln=True)
+        pdf.set_font("Arial", size=11)
+        pdf.set_text_color(80, 80, 80)
+        pdf.multi_cell(0, 6, "No nodules detected above the threshold in this scan.")
     pdf.ln(2)
-    pdf.set_font("Arial", "", 10)
-    pdf.set_text_color(80, 80, 80)
-    disclaimer = (
-        "This AI-generated report is intended for research and educational purposes only. "
-        "It does not substitute professional medical diagnosis or treatment. "
-        "All findings should be reviewed by a qualified medical professional."
+
+    # --- 3) Summary ---
+    if summary:
+        pdf.section_title("3. SUMMARY")
+        _multicell_paragraph(pdf, summary)
+        pdf.ln(2)
+
+    # --- 4) Observations ---
+    if observations:
+        pdf.section_title("4. OBSERVATIONS")
+        _multicell_paragraph(pdf, observations)
+        pdf.ln(2)
+
+    # --- 5) Purpose ---
+    if purpose:
+        pdf.section_title("5. PURPOSE")
+        _multicell_paragraph(pdf, purpose)
+        pdf.ln(2)
+
+    # --- 6) Information Note (gray box) ---
+    if info_note:
+        pdf.info_box(info_note)
+
+    # --- Disclaimer (red) ---
+    pdf.disclaimer_box(
+        "This AI-generated report is for research and educational purposes only. "
+        "It must not be used as a substitute for professional medical diagnosis or treatment. "
+        "All findings require review by a qualified medical professional."
     )
-    pdf.multi_cell(0, 6, disclaimer)
 
-    # Footer
-    pdf.ln(8)
+    # Footer timestamp
     pdf.set_font("Arial", "I", 9)
-    pdf.set_text_color(100, 100, 100)
-    pdf.cell(0, 8, f"Generated by Lung CT AI System | {analysis_datetime}", ln=True, align='C')
+    pdf.set_text_color(120, 120, 120)
+    pdf.ln(4)
+    pdf.cell(0, 8, f"Generated by Al-Rafiah Lung CT AI | {ts.strftime('%Y-%m-%d %H:%M:%S')}", ln=True, align="C")
 
+    # Save
     pdf.output(output_path)
-    return output_path
+    return os.path.abspath(output_path)
 
+
+# ----------------------------
+# Helpers & Theming
+# ----------------------------
+class ThemedPDF(FPDF):
+    brand_green = (19, 71, 52)
+    line_gray = (210, 210, 210)
+
+    def header_with_brand(self, logo_path: str, title: str):
+        # Logo (optional)
+        try:
+            if os.path.exists(logo_path):
+                self.image(logo_path, x=10, y=8, w=28)
+        except Exception:
+            pass
+
+        # Title
+        self.set_font("Arial", "B", 16)
+        self.set_text_color(*self.brand_green)
+        self.cell(0, 10, title, ln=True, align="C")
+        self.ln(6)
+
+        # Divider
+        self.set_draw_color(*self.line_gray)
+        self.set_line_width(0.4)
+        self.line(10, self.get_y(), 200, self.get_y())
+        self.ln(6)
+
+    def section_title(self, text: str):
+        self.set_font("Arial", "B", 13)
+        self.set_text_color(*self.brand_green)
+        self.cell(0, 8, text, ln=True)
+        self.set_text_color(0, 0, 0)
+
+    def info_box(self, text: str):
+        # Light gray background box
+        self.ln(2)
+        x = self.get_x()
+        y = self.get_y()
+        w = self.w - 20  # page width minus margins
+        self.set_fill_color(245, 245, 245)
+        # Draw a filled rect behind the text (height estimated; multi_cell first to measure is complex; keep simple)
+        # Instead, draw borderless with background by switching to multi_cell with fill.
+        self.set_font("Arial", size=10)
+        self.set_text_color(60, 60, 60)
+        self.multi_cell(0, 6, text, fill=True)
+        self.ln(1)
+
+    def disclaimer_box(self, text: str):
+        self.ln(2)
+        self.set_font("Arial", "B", 12)
+        self.set_text_color(150, 0, 0)
+        self.cell(0, 7, "IMPORTANT DISCLAIMER", ln=True)
+        self.set_font("Arial", size=10)
+        self.set_text_color(100, 100, 100)
+        self.multi_cell(0, 6, text)
+        self.set_text_color(0, 0, 0)
+
+
+def _multicell_paragraph(pdf: FPDF, text: str):
+    pdf.set_font("Arial", size=11)
+    pdf.set_text_color(0, 0, 0)
+    pdf.multi_cell(0, 6, text)
+
+
+def _render_detections_table(pdf: FPDF, detections: List[Dict]):
+    """
+    Draw a simple table:
+    | ID | Confidence | Location | Size | Priority |
+    """
+    # Column widths sum should fit within content width (~180mm with 15mm margins)
+    col_w = {
+        "ID": 15,
+        "Confidence": 28,
+        "Location": 70,
+        "Size": 32,
+        "Priority": 25,
+    }
+    header_h = 8
+    row_h = 7
+
+    # Header
+    pdf.ln(2)
+    pdf.set_fill_color(230, 238, 234)  # pale green tint
+    pdf.set_draw_color(200, 200, 200)
+    pdf.set_line_width(0.2)
+    pdf.set_font("Arial", "B", 11)
+    pdf.set_text_color(19, 71, 52)
+    pdf.cell(col_w["ID"],         header_h, "ID",         border=1, align="C", fill=True)
+    pdf.cell(col_w["Confidence"], header_h, "Confidence", border=1, align="C", fill=True)
+    pdf.cell(col_w["Location"],   header_h, "Location",   border=1, align="C", fill=True)
+    pdf.cell(col_w["Size"],       header_h, "Size",       border=1, align="C", fill=True)
+    pdf.cell(col_w["Priority"],   header_h, "Priority",   border=1, align="C", fill=True)
+    pdf.ln(header_h)
+
+    # Rows
+    pdf.set_font("Arial", size=10)
+    pdf.set_text_color(0, 0, 0)
+    for det in detections:
+        nid = str(det.get("nodule_id", ""))
+        conf = str(det.get("confidence", ""))
+        loc = str(det.get("location", ""))
+        size = str(det.get("size", ""))
+        pri = str(det.get("priority", ""))
+
+        pdf.cell(col_w["ID"],         row_h, nid,  border=1, align="C")
+        pdf.cell(col_w["Confidence"], row_h, conf, border=1, align="C")
+        # For potentially long location strings, use multi-cell technique inside a table:
+        # Simple approach: truncate if too long.
+        loc_disp = _truncate(loc, max_chars=42)
+        pdf.cell(col_w["Location"],   row_h, loc_disp, border=1, align="L")
+        pdf.cell(col_w["Size"],       row_h, size, border=1, align="C")
+        pdf.cell(col_w["Priority"],   row_h, pri,  border=1, align="C")
+        pdf.ln(row_h)
+
+    pdf.ln(2)
+
+
+def _truncate(s: str, max_chars: int) -> str:
+    return s if len(s) <= max_chars else (s[: max_chars - 1] + "…")
