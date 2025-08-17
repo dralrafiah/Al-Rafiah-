@@ -1,50 +1,51 @@
 import torch
-import torchvision
-from huggingface_hub import hf_hub_download
-from torchvision.transforms.functional import to_tensor
+import torchvision.models as models
+import torchvision.transforms as transforms
+from PIL import Image
+import requests
+import os
 
-# 👉 SET THIS to your real number of classes (incl. background)
-NUM_CLASSES = 2  # e.g., 2 = {background, nodule}
+def load_lungct_model(repo_id="draziza/lung-colon-model", filename="lungct.pth"):
+    """
+    Load Lung CT model from HuggingFace repo.
+    Handles both full model objects and state_dict checkpoints.
+    """
+    from huggingface_hub import hf_hub_download
 
-def build_lungct_model():
-    # If you trained a different architecture, replace this block with your model.
-    model = torchvision.models.detection.fasterrcnn_resnet50_fpn(weights=None)
-    in_feats = model.roi_heads.box_predictor.cls_score.in_features
-    model.roi_heads.box_predictor = torchvision.models.detection.faster_rcnn.FastRCNNPredictor(
-        in_feats, NUM_CLASSES
-    )
-    return model
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-def load_lungct_model(repo_id: str, filename: str, device=None):
-    if device is None:
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # Download model file from HF
+    model_path = hf_hub_download(repo_id=repo_id, filename=filename)
 
-    ckpt_path = hf_hub_download(repo_id=repo_id, filename=filename)
-    ckpt = torch.load(ckpt_path, map_location=device)
+    # Try to load model
+    checkpoint = torch.load(model_path, map_location=device)
 
-    # If file is a full model object, just return it.
-    if hasattr(ckpt, "eval") and callable(ckpt.eval):
-        model = ckpt.to(device)
-        model.eval()
-        return model, device
+    # Case 1: Full model was saved -> has eval()
+    if hasattr(checkpoint, "eval"):
+        model = checkpoint
+    else:
+        # Case 2: Only state_dict was saved
+        model = models.detection.fasterrcnn_resnet50_fpn(pretrained=False)
+        model.load_state_dict(checkpoint)
 
-    # Otherwise it’s a state_dict (OrderedDict) -> rebuild model and load weights.
-    state = ckpt["state_dict"] if isinstance(ckpt, dict) and "state_dict" in ckpt else ckpt
-    # strip common prefixes like "module." or "model."
-    state = {k.replace("module.", "").replace("model.", ""): v for k, v in state.items()}
-
-    model = build_lungct_model().to(device)
-    model.load_state_dict(state, strict=False)
+    model.to(device)
     model.eval()
     return model, device
 
-def default_transform(img):
-    # detection models expect a float tensor in [0,1]
-    return to_tensor(img)
 
 def predict_lungct(model, device, transform, image):
-    x = transform(image).to(device)
-    # TorchVision detection models expect a list of images
+    """
+    Run inference on a CT scan image.
+    """
+    if transform is None:
+        transform = transforms.Compose([
+            transforms.Resize((512, 512)),
+            transforms.ToTensor(),
+        ])
+
+    img_tensor = transform(image).unsqueeze(0).to(device)
+
     with torch.no_grad():
-        out = model([x])[0]
-    return out
+        outputs = model(img_tensor)[0]
+
+    return outputs
