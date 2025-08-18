@@ -7,17 +7,18 @@ import base64
 import os
 import numpy as np
 import torch
-from torchvision import transforms  # ✅ Added here
+from torchvision import transforms
 from reports.generate_breast_report import generate_breast_report
 from reports.generate_lung_colon_report import generate_lung_colon_report
+from reports.generate_lungct_report import generate_lungct_report   # ✅ NEW
 from breast_model.breast_predictor import predict_breast_model as predict_breast
 from lung_model.run_lung_colon_model import load_models_from_hf, analyze_wsi
-from lungct_model.lungct_loader import load_lungct_model, predict_lungct  # ✅ FIXED IMPORT
+from lungct_model.lungct_loader import load_lungct_model, predict_lungct
 
 # Page setup (MUST BE FIRST)
 st.set_page_config(page_title="Al-Rafiah Medical Platform", page_icon="🧠", layout="centered")
 
-# Load CSS
+# ---------- Helpers ----------
 def load_local_css(file_name):
     try:
         with open(file_name) as f:
@@ -25,9 +26,6 @@ def load_local_css(file_name):
     except FileNotFoundError:
         st.warning(f"CSS file {file_name} not found. Using default styling.")
 
-load_local_css("alrafiah_custom.css")
-
-# Load logo
 def get_base64_of_image(image_path):
     try:
         with open(image_path, "rb") as img_file:
@@ -37,6 +35,36 @@ def get_base64_of_image(image_path):
         st.warning(f"Logo file {image_path} not found.")
         return ""
 
+def box_to_location(box, img_w=512, img_h=512):
+    """
+    Map a detection box center to a coarse Lung region (Upper/Middle/Lower x Left/Middle/Right).
+    Assumes model ran on a 512x512 transform.
+    """
+    x1, y1, x2, y2 = [b.item() if hasattr(b, "item") else float(b) for b in box]
+    x_center = (x1 + x2) / 2.0
+    y_center = (y1 + y2) / 2.0
+
+    # vertical thirds
+    if y_center < img_h / 3:
+        vert = "Upper"
+    elif y_center < 2 * img_h / 3:
+        vert = "Middle"
+    else:
+        vert = "Lower"
+
+    # horizontal thirds
+    if x_center < img_w / 3:
+        horiz = "Left"
+    elif x_center < 2 * img_w / 3:
+        horiz = "Middle"
+    else:
+        horiz = "Right"
+
+    return f"{vert} {horiz} lung region"
+
+load_local_css("alrafiah_custom.css")
+
+# Load logo
 logo_path = "assets/alrafiah_logo.png"
 logo_base64 = get_base64_of_image(logo_path)
 
@@ -122,7 +150,7 @@ if uploaded_image:
                 st.image(uploaded_image, caption="Uploaded Image")
         except Exception:
             pass
-        
+
         model_choice = st.session_state.get("model_choice")
         analysis_type = st.session_state.get("analysis_type")
 
@@ -136,7 +164,7 @@ if uploaded_image:
             try:
                 image = Image.open(uploaded_image).convert("RGB")
 
-                # BREAST branch
+                # ---------------- BREAST (Histology) ----------------
                 if model_choice == "Breast":
                     st.info("Running Breast Histology Model...")
                     img_resized = image.resize((128, 128))
@@ -166,23 +194,84 @@ if uploaded_image:
                         except Exception as pdf_error:
                             st.warning(f"Report generation failed: {pdf_error}")
 
-                # LUNG & COLON
+                # ---------------- LUNG / COLON ----------------
                 else:
+                    # --------- CT branch (Lung CT) ----------
                     if analysis_type == "CT":
                         if lungct_model is None:
                             st.error(f"Lung CT model unavailable: {lungct_error}")
                         else:
                             st.info("Running Lung CT model...")
-                            transform = transforms.Compose([   # ✅ FIXED
+                            transform = transforms.Compose([
                                 transforms.Resize((512, 512)),
                                 transforms.ToTensor(),
                             ])
                             outputs = predict_lungct(lungct_model, lungct_device, transform, image)
+
+                            # threshold and count
                             keep = outputs["scores"] >= 0.5
                             num = int(keep.sum().item())
                             st.success(f"Detections: {num} (score ≥ 0.5)")
                             if num > 0:
                                 st.write("Top scores:", [f"{s:.2f}" for s in outputs["scores"][keep].cpu().numpy()[:5]])
+
+                            # ---- Build report fields ----
+                            details = []
+                            if num > 0:
+                                keep_idx = keep.nonzero(as_tuple=True)[0].tolist()
+                                for i, idx in enumerate(keep_idx, start=1):
+                                    box = outputs["boxes"][idx]
+                                    score = float(outputs["scores"][idx].item())
+                                    width = float(box[2].item() - box[0].item())
+                                    height = float(box[3].item() - box[1].item())
+                                    approx_size = f"{round(width)} × {round(height)} pixels"
+                                    location = box_to_location(box, 512, 512)
+                                    priority = "High" if score > 0.7 else "Moderate"
+                                    details.append({
+                                        "nodule_id": i,
+                                        "confidence": f"{round(score * 100, 2)}%",
+                                        "location": location,
+                                        "size": approx_size,
+                                        "priority": priority
+                                    })
+
+                            if num > 0:
+                                summary = (
+                                    f"The AI model has analyzed the provided lung image and identified "
+                                    f"{num} potential nodules. These findings are meant to assist in screening and "
+                                    f"should be reviewed by a qualified medical professional for confirmation."
+                                )
+                                purpose = (
+                                    "This AI-powered tool assists in the early detection of lung nodules in uploaded images. "
+                                    "It provides a fast, preliminary analysis to guide further investigation and does not replace "
+                                    "a formal diagnosis by a medical professional."
+                                )
+                                observations = (
+                                    "All detected nodules are small to medium-sized in the provided scan. "
+                                    "The confidence levels are below typical medical certainty thresholds; further scans are recommended. "
+                                    "Nodules may appear due to infection, inflammation, benign growth, or malignancy. "
+                                    "Only a medical professional can confirm their nature."
+                                )
+                                info_note = (
+                                    "ℹ️ Important Information: The location and size values are approximate based on the uploaded image. "
+                                    "For precise clinical measurements, a full medical scan with original imaging data is required."
+                                )
+                            else:
+                                summary = "No nodules detected above the threshold."
+                                purpose = ""
+                                observations = ""
+                                info_note = (
+                                    "ℹ️ Important Information: The location and size values are approximate based on the uploaded image."
+                                )
+
+                            # Persist for PDF generation button on next clicks
+                            st.session_state["ct_details"] = details
+                            st.session_state["ct_summary"] = summary
+                            st.session_state["ct_purpose"] = purpose
+                            st.session_state["ct_observations"] = observations
+                            st.session_state["ct_info_note"] = info_note
+
+                    # --------- Histology branch (Lung/Colon) ----------
                     else:
                         st.info(f"Running {model_choice} Histology Model...")
                         temp_dir = "temp"
@@ -206,6 +295,35 @@ if uploaded_image:
                                 st.error(f"Histology analysis failed: {infer_err}")
             except Exception as e:
                 st.error(f"An error occurred: {str(e)}")
+
+        # ---------- Lung CT PDF generation button (outside Analyze button) ----------
+        if (
+            st.session_state.get("model_choice") == "Lung"
+            and st.session_state.get("analysis_type") == "CT"
+            and st.session_state.get("ct_details") is not None
+        ):
+            st.markdown("---")
+            st.subheader("📄 Generate Lung CT Report")
+            if st.button("Generate PDF Report"):
+                try:
+                    pdf_path = generate_lungct_report(
+                        detections=st.session_state["ct_details"],
+                        summary=st.session_state["ct_summary"],
+                        purpose=st.session_state["ct_purpose"],
+                        observations=st.session_state["ct_observations"],
+                        info_note=st.session_state["ct_info_note"],
+                        user="Anonymous User"
+                    )
+                    st.success("✅ Report generated successfully!")
+                    with open(pdf_path, "rb") as f:
+                        st.download_button(
+                            label="⬇️ Download Lung CT Report",
+                            data=f,
+                            file_name=os.path.basename(pdf_path),
+                            mime="application/pdf"
+                        )
+                except Exception as pdf_err:
+                    st.error(f"Report generation failed: {pdf_err}")
 
 # Footer
 st.markdown("---")
