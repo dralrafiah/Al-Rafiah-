@@ -1,11 +1,12 @@
+# lungct_model/rep_run.py
 import os
 from reports.generate_lungct_report import generate_lungct_report
 
-def run_lungct_report(outputs, logo_path="assets/alrafiah_logo.png"):
+def run_lungct_report(outputs, uploaded_image_name="uploaded_image.png"):
     """
-    Build details list from model outputs and generate the PDF report.
+    Build detections + call generate_lungct_report.
+    Returns the path to the generated PDF.
     """
-
     boxes = outputs["boxes"].cpu().numpy() if "boxes" in outputs else []
     scores = outputs["scores"].cpu().numpy() if "scores" in outputs else []
 
@@ -57,7 +58,6 @@ def run_lungct_report(outputs, logo_path="assets/alrafiah_logo.png"):
         observations=observations,
         info_note=info_note,
         user="Anonymous User",
-        logo_path=logo_path,
+        logo_path="assets/alrafiah_logo.png",
     )
-
     return pdf_path
