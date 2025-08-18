@@ -13,7 +13,6 @@ Pillow==9.5.0
 openslide_python==1.4.2
 openslide-bin==4.0.0.8
 
-
 # Visualization
 matplotlib==3.7.1
 seaborn==0.13.2
@@ -23,7 +22,8 @@ streamlit==1.25.0
 
 # PDF Generation
 fpdf==1.7.2
+reportlab==4.2.2
 
-# Additional Dependencies (Auto-installed with above packages)
+# Additional Dependencies
 huggingface-hub==0.33.4
 safetensors==0.5.3
