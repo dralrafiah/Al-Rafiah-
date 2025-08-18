@@ -73,7 +73,7 @@ def generate_lungct_report(detections, summary, purpose, observations, info_note
             interpretation, recommendation = get_lung_nodule_interpretation(confidence, det.get("priority", "Normal"))
             table_data.append([
                 det.get("nodule_id", "-"),
-                f"{confidence:.1f}",
+                f"{float(confidence):.1f}" if confidence else "-",
                 det.get("location", "-"),
                 det.get("size", "-"),
                 det.get("priority", "-"),
@@ -116,8 +116,17 @@ def generate_lungct_report(detections, summary, purpose, observations, info_note
 
 def get_lung_nodule_interpretation(confidence, priority):
     """
-    Returns a textual interpretation and recommendation based on confidence and priority
+    Returns interpretation and recommendation based on confidence and priority.
+    Converts confidence to float to avoid type errors.
     """
+    try:
+        confidence = float(confidence)
+    except (TypeError, ValueError):
+        confidence = 0.0  # default if invalid
+
+    interpretation = "Low"
+    recommendation = "Low confidence, manual radiologist review required."
+
     if confidence >= 95:
         interpretation = "Very High"
         recommendation = "Immediate clinical follow-up recommended."
@@ -127,12 +136,9 @@ def get_lung_nodule_interpretation(confidence, priority):
     elif confidence >= 70:
         interpretation = "Moderate"
         recommendation = "Moderately confident, clinical correlation advised."
-    else:
-        interpretation = "Low"
-        recommendation = "Low confidence, manual radiologist review required."
     
     # Adjust recommendation if priority is high
-    if priority.lower() in ["high", "critical"]:
+    if priority and str(priority).lower() in ["high", "critical"]:
         recommendation += " Urgent attention needed."
     
     return interpretation, recommendation
