@@ -4,10 +4,14 @@ import uuid
 
 def generate_lungct_report(detections, summary, purpose, observations, info_note, user="User", output_path="Alrafiah_AI_Report_LungCT.pdf"):
     """
-    Generate PDF report for Lung CT analysis using same format as team Breast report
+    Generate a team-style Lung CT report using FPDF (Arial), safe for all characters.
     """
 
-    # --- Generate case ID ---
+    def safe_text(text):
+        # Converts input to string and removes problematic characters for Latin-1
+        return str(text).encode('latin-1', 'replace').decode('latin-1')
+
+    # --- Case ID ---
     case_id = f"LC_{datetime.now().strftime('%Y%m%d')}_{uuid.uuid4().hex[:8].upper()}"
     analysis_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -27,7 +31,7 @@ def generate_lungct_report(detections, summary, purpose, observations, info_note
     pdf.cell(30, 10, "Al-Rafiah Medical AI Report", ln=True, align='C')
     pdf.ln(15)
 
-    # --- 1. Case Identification ---
+    # --- 1. CASE IDENTIFICATION ---
     pdf.set_font("Arial", "B", 14)
     pdf.set_text_color(19, 71, 52)
     pdf.cell(0, 10, "1. CASE IDENTIFICATION", ln=True)
@@ -37,96 +41,92 @@ def generate_lungct_report(detections, summary, purpose, observations, info_note
     pdf.set_text_color(0, 0, 0)
     pdf.cell(0, 8, f"Case ID: {case_id}", ln=True)
     pdf.cell(0, 8, f"Analysis Date & Time: {analysis_datetime}", ln=True)
-    pdf.cell(0, 8, f"Generated for: {user}", ln=True)
+    pdf.cell(0, 8, f"Generated for: {safe_text(user)}", ln=True)
     pdf.cell(0, 8, "Organ System: Lung", ln=True)
     pdf.ln(10)
 
-    # --- 2. Summary ---
+    # --- 2. SUMMARY ---
     pdf.set_font("Arial", "B", 14)
     pdf.set_text_color(19, 71, 52)
     pdf.cell(0, 10, "2. SUMMARY", ln=True)
     pdf.ln(5)
     pdf.set_font("Arial", "", 11)
     pdf.set_text_color(0, 0, 0)
-    pdf.multi_cell(0, 8, str(summary))
+    pdf.multi_cell(0, 8, safe_text(summary))
     pdf.ln(10)
 
-    # --- 3. Purpose ---
+    # --- 3. PURPOSE ---
     if purpose:
         pdf.set_font("Arial", "B", 14)
         pdf.set_text_color(19, 71, 52)
         pdf.cell(0, 10, "3. PURPOSE", ln=True)
         pdf.ln(5)
         pdf.set_font("Arial", "", 11)
-        pdf.set_text_color(0,0,0)
-        pdf.multi_cell(0,8, str(purpose))
+        pdf.multi_cell(0, 8, safe_text(purpose))
         pdf.ln(10)
 
-    # --- 4. Observations ---
+    # --- 4. OBSERVATIONS ---
     if observations:
         pdf.set_font("Arial", "B", 14)
         pdf.set_text_color(19, 71, 52)
         pdf.cell(0, 10, "4. OBSERVATIONS", ln=True)
         pdf.ln(5)
         pdf.set_font("Arial", "", 11)
-        pdf.set_text_color(0,0,0)
-        pdf.multi_cell(0,8, str(observations))
+        pdf.multi_cell(0, 8, safe_text(observations))
         pdf.ln(10)
 
-    # --- 5. Detected Nodules ---
+    # --- 5. DETECTED NODULES ---
     if detections and len(detections) > 0:
         pdf.set_font("Arial", "B", 14)
-        pdf.set_text_color(19,71,52)
-        pdf.cell(0,10,"5. DETECTED NODULES", ln=True)
+        pdf.set_text_color(19, 71, 52)
+        pdf.cell(0, 10, "5. DETECTED NODULES", ln=True)
         pdf.ln(5)
         pdf.set_font("Arial", "", 11)
-        pdf.set_text_color(0,0,0)
+        pdf.set_text_color(0, 0, 0)
 
         for det in detections:
-            # Safely convert confidence to float
-            confidence_val = det.get("confidence", 0)
-            if isinstance(confidence_val, str):
-                confidence_val = float(str(confidence_val).replace('%','').strip() or 0)
-            pdf.cell(0,8,f"Nodule ID: {det.get('nodule_id','-')}", ln=True)
-            pdf.cell(0,8,f"Confidence: {confidence_val:.1f}%", ln=True)
-            pdf.cell(0,8,f"Location: {det.get('location','-')}", ln=True)
-            pdf.cell(0,8,f"Size: {det.get('size','-')}", ln=True)
-            pdf.cell(0,8,f"Priority: {det.get('priority','-')}", ln=True)
+            # Convert confidence to float safely
+            conf = det.get("confidence", 0)
+            if isinstance(conf, str):
+                conf = float(str(conf).replace('%', '').strip() or 0)
+            pdf.cell(0, 8, f"Nodule ID: {safe_text(det.get('nodule_id','-'))}", ln=True)
+            pdf.cell(0, 8, f"Confidence: {conf:.1f}%", ln=True)
+            pdf.cell(0, 8, f"Location: {safe_text(det.get('location','-'))}", ln=True)
+            pdf.cell(0, 8, f"Size: {safe_text(det.get('size','-'))}", ln=True)
+            pdf.cell(0, 8, f"Priority: {safe_text(det.get('priority','-'))}", ln=True)
             pdf.ln(5)
+        pdf.ln(5)
 
-    # --- 6. Additional Info ---
+    # --- 6. ADDITIONAL INFORMATION ---
     if info_note:
         pdf.set_font("Arial", "B", 14)
-        pdf.set_text_color(19,71,52)
-        pdf.cell(0,10,"6. ADDITIONAL INFORMATION", ln=True)
+        pdf.set_text_color(19, 71, 52)
+        pdf.cell(0, 10, "6. ADDITIONAL INFORMATION", ln=True)
         pdf.ln(5)
         pdf.set_font("Arial", "", 11)
-        pdf.set_text_color(0,0,0)
-        pdf.multi_cell(0,8,str(info_note))
+        pdf.multi_cell(0, 8, safe_text(info_note))
         pdf.ln(10)
 
     # --- Disclaimer ---
     pdf.set_font("Arial", "B", 12)
-    pdf.set_text_color(150,0,0)
-    pdf.cell(0,10,"IMPORTANT DISCLAIMER", ln=True)
+    pdf.set_text_color(150, 0, 0)
+    pdf.cell(0, 10, "IMPORTANT DISCLAIMER", ln=True)
     pdf.ln(2)
     pdf.set_font("Arial", "", 10)
-    pdf.set_text_color(100,100,100)
+    pdf.set_text_color(100, 100, 100)
     disclaimer_text = (
         "This AI-generated report is intended for research and educational purposes only. "
         "It should not be used as a substitute for professional medical diagnosis or treatment decisions. "
         "All results require validation by qualified medical professionals. "
         "Clinical correlation and expert review are essential for final diagnosis."
     )
-    pdf.multi_cell(0,6,disclaimer_text)
+    pdf.multi_cell(0, 6, safe_text(disclaimer_text))
     pdf.ln(10)
 
     # --- Footer ---
     pdf.set_font("Arial", "I", 9)
-    pdf.set_text_color(100,100,100)
-    pdf.cell(0,10,f"Generated by Al-Rafiah Lung CT AI | {analysis_datetime}", ln=True, align='C')
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 10, f"Generated by Al-Rafiah Lung CT AI | {analysis_datetime}", ln=True, align='C')
 
-    # Save PDF
     pdf.output(output_path)
     return output_path
-
