@@ -300,16 +300,16 @@ if uploaded_image:
 
                                 st.image(highlighted_img, caption=f"{diagnosis} ({confidence:.2f}%)")
                                 st.success(f"✔ **Primary Classification**: {diagnosis}")
-                                st.metric("🎯 Cancer Presence Confidence", f"{confidence:.2f}%")
+                                st.metric("🎯 Probability of Cancer Presence", f"{confidence:.2f}%")
 
-                                if confidence >= 95:
-                                    st.success("🟢 **Very High Confidence**")
-                                elif confidence >= 85:
-                                    st.info("🔵 **High Confidence**")
+                                if confidence >= 90:
+                                    st.success("🟢 **Very High Probability**")
                                 elif confidence >= 70:
-                                    st.warning("🟡 **Moderate Confidence**")
+                                    st.info("🔵 **High Probability**")
+                                elif confidence >= 40:
+                                    st.warning("🟡 **Moderate Probability**")
                                 else:
-                                    st.error("🔴 **Low Confidence**")
+                                    st.error("🔴 **Low Probability**")
 
                                 # PDF generation for lung/colon uses existing generator
                                 try:
