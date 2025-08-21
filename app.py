@@ -91,7 +91,7 @@ with st.expander("📌 Instructions"):
     Before using the AI service, please make sure to:
     1. Select the organ type (Lung, Colon, Breast)
     2. Select the analysis type (CT or Histology)
-    3. Upload a medical image in JPG format. You can also upload SVS whole slide images for lung or colon cancer analysis.
+    3. Upload a medical image in JPG format.
     """)
 
 # Organ selection
@@ -140,7 +140,7 @@ def get_lungct_model():
 lungct_model, lungct_device, lungct_error = get_lungct_model()
 
 # Image upload + analysis
-uploaded_image = st.file_uploader("Upload Image", type=["jpg", "jpeg", "png", "svs"])
+uploaded_image = st.file_uploader("Upload Image", type=["jpg", "jpeg", "png"])
 if uploaded_image:
     if not selected or "analysis_type" not in st.session_state:
         st.warning("⚠️ Please select both the organ and the type of analysis before proceeding.")
