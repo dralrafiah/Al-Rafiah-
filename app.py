@@ -314,7 +314,6 @@ if uploaded_image:
                                 # PDF generation for lung/colon uses existing generator
                                 try:
                                     pdf_path = generate_lung_colon_report(
-                                        organ="Lung" if model_choice == "lung" else "Colon",
                                         organ=model_choice,
                                         analysis_type=analysis_type,
                                         diagnosis=diagnosis,
