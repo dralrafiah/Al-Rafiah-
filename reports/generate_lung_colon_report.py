@@ -108,18 +108,21 @@ def generate_lung_colon_report(
     try:
         if highlighted_path is not None and os.path.exists(highlighted_path):
             pdf.set_font("Arial", "B", 12)
-            pdf.cell(0, 7, "Highlighted Image (model attention / heatmap):", ln=True)
+            pdf.cell(0, 7, "Diagnosis Image:", ln=True)
             pdf.ln(2)
-            max_w = pdf.w - 30
-            pdf.image(highlighted_path, w=max_w)
+            desired_w = 100  # width in mm, adjust as needed
+            page_width = pdf.w
+            x_offset = (page_width - desired_w) / 2  # center the image
+            pdf.image(highlighted_path, x=x_offset, w=desired_w)
             pdf.ln(6)
             inserted_images.append(highlighted_path)
+
     except Exception:
         pdf.ln(2)
 
     # 3. Clinical notes / recommendation
     pdf.set_font("Arial", "B", 13)
-    pdf.cell(0, 8, "4. CLINICAL NOTES", ln=True)
+    pdf.cell(0, 8, "3. CLINICAL NOTES", ln=True)
     pdf.ln(4)
     pdf.set_font("Arial", "", 11)
     rec_text = (
