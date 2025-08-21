@@ -274,23 +274,69 @@ if uploaded_image:
                     # --------- Histology branch (Lung/Colon) ----------
                     else:
                         st.info(f"Running {model_choice} Histology Model...")
+
+                        # Save uploaded file to temp for openslide/analyze_wsi
                         temp_dir = "temp"
                         os.makedirs(temp_dir, exist_ok=True)
                         temp_path = os.path.join(temp_dir, uploaded_image.name)
                         with open(temp_path, "wb") as f:
                             f.write(uploaded_image.getbuffer())
 
+                        # Ensure models are available
                         if lung_colon_models is None:
-                            st.error("Failed to load Lung/Colon models.")
+                            try:
+                                lung_colon_models = get_lung_colon_models()
+                            except Exception as load_err:
+                                st.error(f"Failed to load Lung/Colon models: {load_err}")
+                                lung_colon_models = None
+
                         else:
                             model = lung_colon_models["lung"] if model_choice == "Lung" else lung_colon_models["colon"]
+
                             try:
                                 highlighted_img, diagnosis, confidence = analyze_wsi(
                                     temp_path, model, device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
                                 )
+
                                 st.image(highlighted_img, caption=f"{diagnosis} ({confidence:.2f}%)")
                                 st.success(f"✔ **Primary Classification**: {diagnosis}")
-                                st.metric("🎯 Confidence", f"{confidence:.2f}%")
+                                st.metric("🎯 Cancer Presence Confidence", f"{confidence:.2f}%")
+
+                                if confidence >= 95:
+                                    st.success("🟢 **Very High Confidence**")
+                                elif confidence >= 85:
+                                    st.info("🔵 **High Confidence**")
+                                elif confidence >= 70:
+                                    st.warning("🟡 **Moderate Confidence**")
+                                else:
+                                    st.error("🔴 **Low Confidence**")
+
+                                # PDF generation for lung/colon uses existing generator
+                                try:
+                                    pdf_path = generate_lung_colon_report(
+                                        organ="Lung" if model_choice == "lung" else "Colon",
+                                        organ=model_choice,
+                                        analysis_type=analysis_type,
+                                        diagnosis=diagnosis,
+                                        confidence=confidence,
+                                        highlighted_image=highlighted_img,
+                                        output_path=f"reports/Alrafiah_AI_{model_choice}_Report.pdf"
+                                    )
+
+                                    if os.path.exists(pdf_path):
+                                        with open(pdf_path, "rb") as file:
+                                            st.download_button(
+                                                "📄 Download Lung/Colon Report",
+                                                file.read(),
+                                                file_name=f"Alrafiah_AI_{model_choice}_Report.pdf",
+                                                mime="application/pdf"
+                                            )
+                                    else:
+                                        st.warning("Lung/Colon report generation did not produce a PDF file.")
+                                except Exception as pdf_error:
+                                    st.warning(f"Report generation failed: {pdf_error}")
+
+
                             except Exception as infer_err:
                                 st.error(f"Histology analysis failed: {infer_err}")
             except Exception as e:
