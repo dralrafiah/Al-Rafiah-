@@ -16,7 +16,7 @@ from lung_model.run_lung_colon_model import load_models_from_hf, analyze_wsi
 from lungct_model.lungct_loader import load_lungct_model, predict_lungct
 
 # Page setup (MUST BE FIRST)
-st.set_page_config(page_title="Al-Rafiah Medical Platform", page_icon="🧠", layout="centered")
+st.set_page_config(page_title="Naseej AI | نسيج", page_icon="🧠", layout="centered")
 
 # ---------- Helpers ----------
 def load_local_css(file_name):
