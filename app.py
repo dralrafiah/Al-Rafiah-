@@ -81,7 +81,7 @@ if logo_base64:
     ''', unsafe_allow_html=True)
 
 # Header
-st.markdown("<h1 id='home' style='text-align: center; color: #134734;'>Al-Rafiah Medical Platform</h1>", unsafe_allow_html=True)
+st.markdown("<h1 id='home' style='text-align: center; color: #134734;'>Naseej AI | نسيج</h1>", unsafe_allow_html=True)
 st.markdown("<h4 style='text-align: center; color: gray;'>Smart Cancer Detection Service</h4>", unsafe_allow_html=True)
 st.markdown("---")
 
